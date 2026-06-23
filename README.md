@@ -14,6 +14,8 @@
 
 Cinora is a robust, full-stack streaming platform and movie tracking application built with the modern Next.js App Router. It seamlessly aggregates content from external APIs (TMDB, Kinopoisk), provides an embedded multi-source player, and features advanced AI-driven recommendations based on user watch history and preferences.
 
+🇷🇺 **[Читайте простое руководство на русском языке: Как работает Cinora под капотом](.ai-docs/how-it-works-ru.md)**
+
 ## ✨ Features
 
 - 🎬 **Multi-Source Video Player**: Aggregates multiple video CDNs to ensure content is always available.
