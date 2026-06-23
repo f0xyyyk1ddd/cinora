@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3005:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://cinora.ru
+      - DATABASE_URL=file:/app/data/dev.db
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    networks:
+      - cinora_network
+
+
+networks:
+  cinora_network:
+    driver: bridge

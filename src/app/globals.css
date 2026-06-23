@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0a0a0f;
+  --color-foreground: #ffffff;
+  --color-card: #1a1a2e;
+  --color-card-foreground: #ffffff;
+  --color-primary: #dc2626; /* red-600 */
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #27272a; /* zinc-800 */
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #27272a;
+  --color-muted-foreground: #a1a1aa; /* zinc-400 */
+  --color-accent: #dc2626;
+  --color-accent-foreground: #ffffff;
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: #dc2626;
+}
+
+@layer base {
+  :root {
+    --background: #0a0a0f;
+    --foreground: #ffffff;
+  }
+  
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-black/40 backdrop-blur-md border border-white/10;
+  }
+  
+  .glass-card {
+    @apply bg-[#1a1a2e]/80 backdrop-blur-xl border border-white/5;
+  }
+  
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

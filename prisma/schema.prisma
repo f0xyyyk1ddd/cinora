@@ -1,0 +1,330 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("USER")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  tvAuthCodes  TvAuthCode[]
+  favorites    Favorite[]
+  watchHistory WatchHistory[]
+  ratings      Rating[]
+  comments     Comment[]
+}
+
+// NextAuth necessary models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model TvAuthCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  deviceId  String
+  userId    String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// CineVerse Models
+
+model Movie {
+  id            String   @id @default(cuid())
+  kinopoiskId   Int?     @unique
+  tmdbId        Int?     @unique
+  title         String
+  originalTitle String?
+  description   String
+  year          Int
+  runtime       Int? // in minutes
+  rating        Float    @default(0.0) // IMDB/TMDB rating
+  posterUrl     String?
+  backdropUrl   String?
+  trailerUrl    String?
+  isPremium     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  genres       MovieGenre[]
+  collections  CollectionMovie[]
+  videoSources VideoSource[]
+  favorites    Favorite[]
+  history      WatchHistory[]
+  userRatings  Rating[]
+  comments     Comment[]
+
+  @@index([rating])
+  @@index([createdAt])
+  @@index([kinopoiskId])
+}
+
+model Series {
+  id            String   @id @default(cuid())
+  kinopoiskId   Int?     @unique
+  tmdbId        Int?     @unique
+  title         String
+  originalTitle String?
+  description   String
+  year          Int
+  rating        Float    @default(0.0)
+  posterUrl     String?
+  backdropUrl   String?
+  isPremium     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  seasons     Season[]
+  genres      SeriesGenre[]
+  collections CollectionSeries[]
+  favorites   Favorite[]
+  userRatings Rating[]
+  comments    Comment[]
+  history     WatchHistory[]
+
+  @@index([rating])
+  @@index([createdAt])
+  @@index([kinopoiskId])
+}
+
+model Season {
+  id          String   @id @default(cuid())
+  seriesId    String
+  kinopoiskId Int?     @unique
+  tmdbId      Int?
+  number      Int
+  title       String
+  description String?
+  posterUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  series   Series    @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  episodes Episode[]
+
+  @@unique([seriesId, number])
+}
+
+model Episode {
+  id           String   @id @default(cuid())
+  seasonId     String
+  kinopoiskId  Int?     @unique
+  tmdbId       Int?
+  number       Int
+  title        String
+  description  String?
+  runtime      Int? // in minutes
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  season       Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  videoSources VideoSource[]
+  history      WatchHistory[]
+
+  @@unique([seasonId, number])
+}
+
+model Genre {
+  id        String   @id @default(cuid())
+  kinopoiskId Int?   @unique
+  tmdbId    Int?     @unique
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  movies MovieGenre[]
+  series SeriesGenre[]
+}
+
+model MovieGenre {
+  movieId String
+  genreId String
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+}
+
+model SeriesGenre {
+  seriesId String
+  genreId  String
+
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  genre  Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([seriesId, genreId])
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  movies CollectionMovie[]
+  series CollectionSeries[]
+}
+
+model CollectionMovie {
+  collectionId String
+  movieId      String
+  order        Int    @default(0)
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  movie      Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, movieId])
+}
+
+model CollectionSeries {
+  collectionId String
+  seriesId     String
+  order        Int    @default(0)
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  series     Series     @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, seriesId])
+}
+
+model VideoSource {
+  id        String   @id @default(cuid())
+  title     String // e.g., "Server 1", "HD Source"
+  provider  String? // e.g., "Vidsrc", "Superembed"
+  embedUrl  String
+  priority  Int      @default(0)
+  active    Boolean  @default(true)
+  movieId   String?
+  episodeId String?
+  createdAt DateTime @default(now())
+
+  movie   Movie?   @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String?
+  seriesId  String?
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie  Movie?  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  series Series? @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@unique([userId, seriesId])
+}
+
+model WatchHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  movieId     String?
+  episodeId   String?
+  seriesId    String?
+  progress    Int      @default(0) // time in seconds
+  duration    Int      @default(0) // total duration in seconds
+  lastWatched DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie   Movie?   @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  series  Series?  @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@unique([userId, episodeId])
+  @@unique([userId, seriesId])
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String?
+  seriesId  String?
+  value     Int // 1-5 or 1-10
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie  Movie?  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  series Series? @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
+  @@unique([userId, seriesId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  movieId   String?
+  seriesId  String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie  Movie?  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  series Series? @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+}
+
+model Blacklist {
+  id          String   @id @default(cuid())
+  kinopoiskId Int      @unique
+  createdAt   DateTime @default(now())
+}
+
