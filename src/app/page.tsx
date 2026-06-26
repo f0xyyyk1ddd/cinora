@@ -9,6 +9,15 @@ import { authOptions } from "@/lib/auth"
 
 export const revalidate = 60 // revalidate every minute
 
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 async function getHomeData() {
   // First, check if we have any movies in DB
   const count = await prisma.movie.count()
@@ -26,13 +35,41 @@ async function getHomeData() {
   }
 
   // Fetch data from DB - Top Kinopoisk only (with kinopoiskId)
-  const [topKinopoiskMovies, newReleases, topKinopoiskSeries, recentMovies, recentSeries] = await Promise.all([
-    prisma.movie.findMany({ where: { kinopoiskId: { not: null }, rating: { gte: 7.0 }, videoSources: { some: {} } }, orderBy: { rating: 'desc' }, take: 10 }),
-    prisma.movie.findMany({ where: { videoSources: { some: {} } }, orderBy: [{ year: 'desc' }, { rating: 'desc' }], take: 15 }),
-    prisma.series.findMany({ where: { kinopoiskId: { not: null }, rating: { gte: 7.0 } }, orderBy: { rating: 'desc' }, take: 10 }),
+  const excludedGenres = ['короткометражка', 'документальный', 'для-взрослых', 'ток-шоу', 'реальное-тв'];
+  const [topKinopoiskMoviesRaw, newReleases, topKinopoiskSeriesRaw, recentMovies, recentSeries] = await Promise.all([
+    prisma.movie.findMany({ 
+      where: { 
+        kinopoiskId: { not: null }, 
+        rating: { gte: 7.5 }, 
+        videoSources: { some: {} },
+        genres: { none: { genre: { slug: { in: excludedGenres } } } }
+      }, 
+      orderBy: { rating: 'desc' }, 
+      take: 100 
+    }),
+    prisma.movie.findMany({ 
+      where: { 
+        videoSources: { some: {} },
+        genres: { none: { genre: { slug: { in: excludedGenres } } } }
+      }, 
+      orderBy: [{ year: 'desc' }, { rating: 'desc' }], 
+      take: 15 
+    }),
+    prisma.series.findMany({ 
+      where: { 
+        kinopoiskId: { not: null }, 
+        rating: { gte: 7.5 },
+        genres: { none: { genre: { slug: { in: excludedGenres } } } }
+      }, 
+      orderBy: { rating: 'desc' }, 
+      take: 100 
+    }),
     prisma.movie.findMany({ where: { videoSources: { some: {} } }, orderBy: { createdAt: 'desc' }, take: 10 }),
     prisma.series.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
   ])
+
+  const topKinopoiskMovies = shuffleArray(topKinopoiskMoviesRaw).slice(0, 15);
+  const topKinopoiskSeries = shuffleArray(topKinopoiskSeriesRaw).slice(0, 15);
 
   // Map to common structure
   const mapContent = (items: any[], type: "movie" | "series") => 
@@ -101,13 +138,17 @@ async function getHomeData() {
       const recMovies = await prisma.movie.findMany({
         where: {
           id: { notIn: Array.from(excludeIds) as string[] },
-          genres: { some: { genre: { slug: { in: topGenres } } } },
+          genres: { 
+            some: { genre: { slug: { in: topGenres } } },
+            none: { genre: { slug: { in: excludedGenres } } }
+          },
+          rating: { gte: 7.0 },
           videoSources: { some: {} }
         },
         orderBy: { rating: 'desc' },
-        take: 15
+        take: 50
       })
-      recommended = mapContent(recMovies, "movie")
+      recommended = mapContent(shuffleArray(recMovies).slice(0, 15), "movie")
     }
   }
 
