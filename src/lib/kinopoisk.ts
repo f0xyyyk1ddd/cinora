@@ -5,6 +5,8 @@ let currentKeyIndex = 0
 
 const BASE_URL = "https://kinopoiskapiunofficial.tech/api"
 
+const deadKeys = new Set<string>()
+
 async function fetchWithRotation(endpoint: string, params: Record<string, string> = {}) {
   const url = new URL(`${BASE_URL}${endpoint}`)
   Object.entries(params).forEach(([key, value]) => {
@@ -12,7 +14,13 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   })
 
   let attempts = 0
-  const keys = getKeys()
+  const allKeys = getKeys()
+  const keys = allKeys.filter(k => !deadKeys.has(k))
+  
+  if (keys.length === 0) {
+    throw new Error("ALL_KEYS_DEAD: No active keys remaining")
+  }
+
   let localKeyIndex = currentKeyIndex
   while (attempts < keys.length) {
     const key = keys[localKeyIndex % keys.length]
@@ -24,11 +32,20 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
       cache: "no-store"
     })
 
-    if (res.status === 401 || res.status === 402 || res.status === 429) {
+    if (res.status === 401) {
+      deadKeys.add(key)
+      console.log(`[KINOPOISK] Key dead (Status 401). Removing from rotation.`)
+      // Try next key without counting this towards normal quota failures
+      localKeyIndex = (localKeyIndex + 1) % keys.length
+      currentKeyIndex = localKeyIndex
+      continue
+    }
+
+    if (res.status === 402 || res.status === 429) {
       localKeyIndex = (localKeyIndex + 1) % keys.length
       currentKeyIndex = localKeyIndex
       attempts++
-      console.log(`[KINOPOISK] Key invalid or exceeded (Status ${res.status}). Switching to key index ${localKeyIndex}`)
+      console.log(`[KINOPOISK] Key quota exceeded (Status ${res.status}). Switching to key index ${localKeyIndex}`)
       continue
     }
 

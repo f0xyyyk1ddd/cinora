@@ -127,6 +127,23 @@ export async function runDailyImport(force = false) {
       addLog(`Error fetching premieres: ${err.message}`)
     }
 
+    // 2.5 Fetch recent movies for the current year (pages 1 to 5)
+    addLog(`Fetching recent movies for ${year}...`)
+    for (let page = 1; page <= 5; page++) {
+      try {
+        const recent = await kinopoisk.searchByYear(year, page)
+        if (recent && recent.items) {
+          recent.items.forEach((item: any) => {
+            if (item.kinopoiskId) {
+              targetIds.add(item.kinopoiskId)
+            }
+          })
+        }
+      } catch (err: any) {
+        addLog(`Error fetching recent year ${year} page ${page}: ${err.message}`)
+      }
+    }
+
     addLog(`Found ${targetIds.size} potential content IDs to process.`)
 
     // 3. Fetch list of existing Kinopoisk IDs in database to skip duplicates and save quota
