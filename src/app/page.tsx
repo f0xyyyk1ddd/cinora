@@ -35,41 +35,39 @@ async function getHomeData() {
   }
 
   // Fetch data from DB - Top Kinopoisk only (with kinopoiskId)
-  const excludedGenres = ['короткометражка', 'документальный', 'для-взрослых', 'ток-шоу', 'реальное-тв'];
-  const [topKinopoiskMoviesRaw, newReleases, topKinopoiskSeriesRaw, recentMovies, recentSeries] = await Promise.all([
+  const excludedGenres = ['короткометражка', 'документальный', 'для-взрослых', 'ток-шоу', 'реальное-тв', 'мультфильм', 'детский', 'аниме'];
+  
+  const [topKinopoiskMoviesRaw, newReleasesRaw, topKinopoiskSeriesRaw, recentMovies, recentSeries] = await Promise.all([
     prisma.movie.findMany({ 
-      where: { 
-        kinopoiskId: { not: null }, 
-        rating: { gte: 7.5 }, 
-        videoSources: { some: {} },
-        genres: { none: { genre: { slug: { in: excludedGenres } } } }
-      }, 
+      where: { kinopoiskId: { not: null }, rating: { gte: 7.0 }, videoSources: { some: {} } }, 
       orderBy: { rating: 'desc' }, 
-      take: 100 
+      take: 200,
+      include: { genres: { include: { genre: true } } }
     }),
     prisma.movie.findMany({ 
-      where: { 
-        videoSources: { some: {} },
-        genres: { none: { genre: { slug: { in: excludedGenres } } } }
-      }, 
+      where: { videoSources: { some: {} } }, 
       orderBy: [{ year: 'desc' }, { rating: 'desc' }], 
-      take: 15 
+      take: 50,
+      include: { genres: { include: { genre: true } } }
     }),
     prisma.series.findMany({ 
-      where: { 
-        kinopoiskId: { not: null }, 
-        rating: { gte: 7.5 },
-        genres: { none: { genre: { slug: { in: excludedGenres } } } }
-      }, 
+      where: { kinopoiskId: { not: null }, rating: { gte: 7.0 } }, 
       orderBy: { rating: 'desc' }, 
-      take: 100 
+      take: 200,
+      include: { genres: { include: { genre: true } } }
     }),
     prisma.movie.findMany({ where: { videoSources: { some: {} } }, orderBy: { createdAt: 'desc' }, take: 10 }),
     prisma.series.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
   ])
 
-  const topKinopoiskMovies = shuffleArray(topKinopoiskMoviesRaw).slice(0, 15);
-  const topKinopoiskSeries = shuffleArray(topKinopoiskSeriesRaw).slice(0, 15);
+  const isValidContent = (item: any) => {
+    if (!item.genres) return true;
+    return !item.genres.some((g: any) => excludedGenres.includes(g.genre?.slug));
+  }
+
+  const topKinopoiskMovies = shuffleArray(topKinopoiskMoviesRaw.filter(isValidContent)).slice(0, 15);
+  const newReleases = newReleasesRaw.filter(isValidContent).slice(0, 15);
+  const topKinopoiskSeries = shuffleArray(topKinopoiskSeriesRaw.filter(isValidContent)).slice(0, 15);
 
   // Map to common structure
   const mapContent = (items: any[], type: "movie" | "series") => 
@@ -138,17 +136,15 @@ async function getHomeData() {
       const recMovies = await prisma.movie.findMany({
         where: {
           id: { notIn: Array.from(excludeIds) as string[] },
-          genres: { 
-            some: { genre: { slug: { in: topGenres } } },
-            none: { genre: { slug: { in: excludedGenres } } }
-          },
+          genres: { some: { genre: { slug: { in: topGenres } } } },
           rating: { gte: 7.0 },
           videoSources: { some: {} }
         },
         orderBy: { rating: 'desc' },
-        take: 50
+        take: 100,
+        include: { genres: { include: { genre: true } } }
       })
-      recommended = mapContent(shuffleArray(recMovies).slice(0, 15), "movie")
+      recommended = mapContent(shuffleArray(recMovies.filter(isValidContent)).slice(0, 15), "movie")
     }
   }
 
