@@ -39,13 +39,12 @@ async function getHomeData() {
   
   const [topKinopoiskMoviesRaw, newReleasesRaw, topKinopoiskSeriesRaw, recentMovies, recentSeries] = await Promise.all([
     prisma.movie.findMany({ 
-      where: { kinopoiskId: { not: null }, rating: { gte: 7.0 }, videoSources: { some: {} } }, 
+      where: { kinopoiskId: { not: null }, rating: { gte: 7.0 } }, 
       orderBy: { rating: 'desc' }, 
       take: 200,
       include: { genres: { include: { genre: true } } }
     }),
     prisma.movie.findMany({ 
-      where: { videoSources: { some: {} } }, 
       orderBy: [{ year: 'desc' }, { rating: 'desc' }], 
       take: 50,
       include: { genres: { include: { genre: true } } }
@@ -56,7 +55,7 @@ async function getHomeData() {
       take: 200,
       include: { genres: { include: { genre: true } } }
     }),
-    prisma.movie.findMany({ where: { videoSources: { some: {} } }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    prisma.movie.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
     prisma.series.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
   ])
 
@@ -137,8 +136,7 @@ async function getHomeData() {
         where: {
           id: { notIn: Array.from(excludeIds) as string[] },
           genres: { some: { genre: { slug: { in: topGenres } } } },
-          rating: { gte: 7.0 },
-          videoSources: { some: {} }
+          rating: { gte: 7.0 }
         },
         orderBy: { rating: 'desc' },
         take: 100,

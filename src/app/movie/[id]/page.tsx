@@ -28,7 +28,6 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       where: {
         id: { not: movie.id },
         genres: { some: { genreId: { in: movie.genres.map(g => g.genreId) } } },
-        videoSources: { some: {} }
       },
       take: 12,
       orderBy: { rating: 'desc' }
@@ -38,7 +37,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // Fallback to top rated if no similar found
   if (recommended.length === 0) {
     recommended = await prisma.movie.findMany({
-      where: { id: { not: movie.id }, videoSources: { some: {} } },
+      where: { id: { not: movie.id } },
       take: 12,
       orderBy: { rating: 'desc' }
     })

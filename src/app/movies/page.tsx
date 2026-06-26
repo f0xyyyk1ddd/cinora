@@ -18,7 +18,7 @@ export default async function MoviesPage({ searchParams }: { searchParams: Promi
   const skip = (page - 1) * take
 
   // Build where clause — always require at least one video source
-  const where: any = { videoSources: { some: {} } }
+  const where: any = {}
   
   if (genre) {
     where.genres = {
