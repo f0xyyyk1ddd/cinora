@@ -24,14 +24,25 @@ export default async function SeriesPage({ params }: { params: Promise<{ id: str
   // Get some recommendations
   let recommended: any[] = []
   if (series.genres && series.genres.length > 0) {
-    recommended = await prisma.series.findMany({
+    const recommendedRaw = await prisma.series.findMany({
       where: {
         id: { not: series.id },
         genres: { some: { genreId: { in: series.genres.map(g => g.genreId) } } }
       },
-      take: 12,
-      orderBy: { rating: 'desc' }
+      take: 100,
+      orderBy: { rating: 'desc' },
+      include: { genres: true }
     })
+    
+    // Sort by number of matching genres, then by rating
+    recommendedRaw.sort((a, b) => {
+      const overlapA = a.genres.filter(g => series.genres.some(mg => mg.genreId === g.genreId)).length;
+      const overlapB = b.genres.filter(g => series.genres.some(mg => mg.genreId === g.genreId)).length;
+      if (overlapB !== overlapA) return overlapB - overlapA;
+      return b.rating - a.rating;
+    });
+    
+    recommended = recommendedRaw.slice(0, 15);
   }
 
   // Fallback to top rated if no similar found
@@ -96,7 +107,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ id: str
               <span className="px-2 py-0.5 border border-gray-600 rounded text-xs">HD</span>
             </div>
 
-            <p className="text-lg text-gray-200 mb-8 max-w-2xl leading-relaxed text-shadow">
+            <p className="text-lg text-gray-200 mb-8 max-w-2xl leading-relaxed text-shadow line-clamp-4 md:line-clamp-6">
               {series.description}
             </p>
 
@@ -122,7 +133,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ id: str
       <div className="relative z-20 -mt-8 pb-20">
         {recommended.length > 0 && (
           <ContentRow 
-            title="More Like This" 
+            title="Вам может понравится" 
             items={recommended.map(r => ({ ...r, type: "series" }))} 
           />
         )}

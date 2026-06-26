@@ -24,14 +24,25 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
   // Get some recommendations (only movies that have video sources)
   let recommended: any[] = []
   if (movie.genres && movie.genres.length > 0) {
-    recommended = await prisma.movie.findMany({
+    const recommendedRaw = await prisma.movie.findMany({
       where: {
         id: { not: movie.id },
         genres: { some: { genreId: { in: movie.genres.map(g => g.genreId) } } },
       },
-      take: 12,
-      orderBy: { rating: 'desc' }
+      take: 100,
+      orderBy: { rating: 'desc' },
+      include: { genres: true }
     })
+    
+    // Sort by number of matching genres, then by rating
+    recommendedRaw.sort((a, b) => {
+      const overlapA = a.genres.filter(g => movie.genres.some(mg => mg.genreId === g.genreId)).length;
+      const overlapB = b.genres.filter(g => movie.genres.some(mg => mg.genreId === g.genreId)).length;
+      if (overlapB !== overlapA) return overlapB - overlapA;
+      return b.rating - a.rating;
+    });
+    
+    recommended = recommendedRaw.slice(0, 15);
   }
 
   // Fallback to top rated if no similar found
@@ -87,7 +98,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
               <span className="px-2 py-0.5 border border-gray-600 rounded text-xs">HD</span>
             </div>
 
-            <p className="text-lg text-gray-200 mb-8 max-w-2xl leading-relaxed text-shadow">
+            <p className="text-lg text-gray-200 mb-8 max-w-2xl leading-relaxed text-shadow line-clamp-4 md:line-clamp-6">
               {movie.description}
             </p>
 
@@ -115,7 +126,7 @@ export default async function MoviePage({ params }: { params: Promise<{ id: stri
       <div className="relative z-20 -mt-8 pb-20">
         {recommended.length > 0 && (
           <ContentRow 
-            title="Похожее" 
+            title="Вам может понравится" 
             items={recommended.map(r => ({ ...r, type: "movie" }))} 
           />
         )}
